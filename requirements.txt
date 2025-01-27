@@ -1,0 +1,6 @@
+langchain~=0.3.15
+langchain_community~=0.3.15
+python-dotenv~=1.0.1
+langchain-openai~=0.3.2
+langgraph~=0.2.67
+langchain-core~=0.3.31
