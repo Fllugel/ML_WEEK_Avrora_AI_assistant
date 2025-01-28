@@ -1,4 +1,4 @@
-# Define the chat loop function
+from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
 
 runnable = graph_builder.compile()
@@ -23,6 +23,10 @@ def chat_loop():
         # Add user input to the state messages
         state["messages"].append({"role": "user", "content": user_input})
 
+        # Enforce the maximum number of messages
+        if len(state["messages"]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY:
+            state["messages"].pop(0)
+
         # Run the graph to get a response
         respond = runnable.invoke(state)
 
@@ -32,9 +36,8 @@ def chat_loop():
 
         state["messages"].append({"role": "assistant", "content": response_message})
 
-        if user_input.lower() == "exit":
-            print("Goodbye!")
-            return
+        if len(state["messages"]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY:
+            state["messages"].pop(0)
 
 
 chat_loop()
