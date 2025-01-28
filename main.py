@@ -1,6 +1,8 @@
 # Define the chat loop function
 from graph import graph_builder
 
+runnable = graph_builder.compile()
+
 
 def chat_loop():
     print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
@@ -22,19 +24,17 @@ def chat_loop():
         state["messages"].append({"role": "user", "content": user_input})
 
         # Run the graph to get a response
-        events = graph_builder.compile().stream(state, stream_mode="values")
+        respond = runnable.invoke(state)
 
-        for event in events:
-            response_message = event["messages"][-1].content  
-            print(f"Bot: {response_message}")
+        response_message = respond["messages"][-1].content
 
-            # Add bot response to state messages
-            state["messages"].append({"role": "assistant", "content": response_message})
+        print(f"Bot: {response_message}")
 
-            # If user wants to continue, loop again; if not, exit
-            if user_input.lower() == "exit":
-                print("Goodbye!")
-                return
+        state["messages"].append({"role": "assistant", "content": response_message})
+
+        if user_input.lower() == "exit":
+            print("Goodbye!")
+            return
 
 
 chat_loop()

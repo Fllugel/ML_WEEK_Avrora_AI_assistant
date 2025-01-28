@@ -46,7 +46,5 @@ graph_builder.add_conditional_edges(
 )
 
 # Define entry and exit edges
-graph_builder.add_edge(START, "chatbot")  # Start from the chatbot node
-graph_builder.add_edge("chatbot", END)  # Exit after the chatbot finishes
-
-
+graph_builder.add_edge(START, "chatbot")
+graph_builder.add_edge("chatbot", END)
