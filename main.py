@@ -1,27 +1,26 @@
-from langchain_core.prompts import ChatPromptTemplate
 from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
-
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # Compile the graph
 runnable = graph_builder.compile()
 
 # Define the system prompt
-system_prompt = 'Always start chat with "Hi, Im Bob"'
+system_prompt = "Always start chat with 'Hi, I am Bob'"
+
+# Create the ChatPromptTemplate
+prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    MessagesPlaceholder(variable_name="history"),
+    ("user", "{input}")
+])
 
 
 def chat_loop():
     print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
 
-    # Initialize the state using ChatPromptTemplate
-    state = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("user", "{user_input}"),
-        ("human", "{human_scratchpad}")
-    ])
-
-    # Initialize messages in the state
-    messages = []
+    # Initialize chat history
+    chat_history = []
 
     while True:
         # Take user input
@@ -32,34 +31,30 @@ def chat_loop():
             print("Goodbye!")
             break
 
-        # Create a message dictionary for user input
-        messages.append({"role": "user", "content": user_input})
-
-        # Enforce the maximum number of messages in memory
-        if len(messages) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY:
-            messages.pop(0)
-
-        # Create the state inputs dynamically
-        input_state = {
-            "user_input": user_input,
-            "human_scratchpad": "",
-            "messages": messages
+        # Build the input payload for the graph
+        input_payload = {
+            "history": chat_history,
+            "input": user_input
         }
 
-        # Run the graph to get a response
-        respond = runnable.invoke(input_state)
+        # Invoke the graph
+        response = runnable.invoke({
+            "messages": prompt.format_messages(**input_payload)
+        })
 
-        # Get the response message from the assistant
-        response_message = respond["messages"][-1].content
+        # Extract the assistant's response
+        response_message = response["messages"][-1].content
 
+        # Display the bot's response
         print(f"Bot: {response_message}")
 
-        # Add the assistant response to messages
-        messages.append({"role": "assistant", "content": response_message})
+        # Update chat history
+        chat_history.append({"role": "user", "content": user_input})
+        chat_history.append({"role": "assistant", "content": response_message})
 
-        # Enforce the maximum number of messages in memory
-        if len(messages) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY:
-            messages.pop(0)
+        # Enforce the maximum number of messages
+        if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
+            chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
 
 
 # Start the chat loop
