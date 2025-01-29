@@ -1,3 +1,4 @@
+import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
@@ -21,7 +22,7 @@ class State(TypedDict):
 graph_builder = StateGraph(State)
 
 # Set up the LLM with tools binding
-llm = ChatOpenAI(model=OPENAI_MODEL_NAME, temperature=0.7)
+llm = ChatOpenAI(model=OPENAI_MODEL_NAME, temperature=0.7,api_key=os.getenv("GPT_API_KEY"))
 llm_with_tools = llm.bind_tools(tools=tools)
 
 

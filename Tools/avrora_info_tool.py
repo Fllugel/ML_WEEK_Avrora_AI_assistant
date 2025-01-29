@@ -2,12 +2,14 @@ from langchain_core.tools import tool
 
 
 @tool("avrora_info_tool")
-def avrora_info_tool(question: str) -> str:
+def avrora_info_tool(topic: str) -> str:
     """
     Цей інструмент повертає інформацію про компанію "Аврора".
+    numbers - цифрова інформація про компанію
     """
 
-    info = """
+    if topic == "numbers":
+        info = """
     **Аврора в цифрах**  
 1600+ Магазинів Аврора по Україні  
 6,4 млрд Гривень сплачених податків і зборів (за 2024 р.)  
@@ -15,5 +17,7 @@ def avrora_info_tool(question: str) -> str:
 2800+ Звернень про благодійну допомогу опрацьовано  
 765 000+ Видано одиниць товару гуманітарної допомоги  
 70% Частка вітчизняних постачальників """
+    else:
+        info = "Неправильний запит (topic). Спробуйте ще раз."
 
     return info
