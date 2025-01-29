@@ -5,7 +5,6 @@ from langchain_core.tools import tool
 def holiday_info_tool(holiday: str) -> str:
     """
     Цей інструмент повертає інформацію про свята і події та товари, які їм відповідають. Залежно від назви свята (holiday), повертається різна інформація.
-
     """
 
     if holiday == "День народження":
