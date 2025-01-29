@@ -46,3 +46,22 @@ graph_builder.add_conditional_edges(
 # Define entry and exit edges
 graph_builder.add_edge(START, "chatbot")
 graph_builder.add_edge("chatbot", END)
+graph_builder.add_edge("tools", "chatbot")
+
+
+from IPython.display import Image, display
+from PIL import Image as PILImage
+from io import BytesIO
+from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
+
+app = graph_builder.compile()
+
+# Get the graph image as a PNG
+graph_png = app.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API)
+
+# Display the image
+display(Image(graph_png))
+
+# Save the image to a file
+with open("graph_image.png", "wb") as f:
+    f.write(graph_png)
