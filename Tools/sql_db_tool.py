@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain_community.utilities import SQLDatabase
 from langchain import hub
@@ -70,28 +71,17 @@ def generate_answer(state: State):
     return {"answer": response.content}
 
 
-# Define the sql_db_node function
-# Before
-def sql_db_node(state: State):
-    """Node to make and execute a query."""
+# Define the tool using the @tool decorator
+@tool("find_data_in_db")
+def find_data_in_db(question: str) -> str:
+    """Create a tool that searches for data in a store database. The database contains information about products, including:
+        -Category: Name and unique identification number of the category.
+        -Subcategory: Name and unique identification number of the subcategory.
+        -Product Name: Specific name of the product.
+        -Stock Quantity: The number of units available in the store.
+        -Stock Value: The total price of all units of the product in stock."""
+    state = {"question": question}
     state.update(write_query(state))
     state.update(execute_query(state))
     state.update(generate_answer(state))
-    return state
-
-
-def sql_db_node(state: State):
-    """Node to make and execute a query."""
-    if "question" not in state:
-        state["question"] = ""
-    if "query" not in state:
-        state["query"] = ""
-    if "result" not in state:
-        state["result"] = ""
-    if "answer" not in state:
-        state["answer"] = ""
-
-    state.update(write_query(state))
-    state.update(execute_query(state))
-    state.update(generate_answer(state))
-    return state
+    return state["answer"]
