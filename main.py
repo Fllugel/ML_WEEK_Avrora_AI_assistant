@@ -1,20 +1,17 @@
+import os
+from dotenv import load_dotenv
 from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from Nodes.chatbot_node import prompt  # Import the prompt from chatbot_node
+
+load_dotenv()
+
+if not os.environ.get("LANGSMITH_API_KEY"):
+    os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")
+    os.environ["LANGSMITH_TRACING"] = "true"
 
 # Compile the graph
 runnable = graph_builder.compile()
-
-# Define the system prompt
-system_prompt = "Always start chat with 'Hi, I am Bob'"
-
-# Create the ChatPromptTemplate
-prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt),
-    MessagesPlaceholder(variable_name="history"),
-    ("user", "{input}")
-])
-
 
 def chat_loop():
     print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
@@ -55,7 +52,6 @@ def chat_loop():
         # Enforce the maximum number of messages
         if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
             chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
-
 
 # Start the chat loop
 chat_loop()
