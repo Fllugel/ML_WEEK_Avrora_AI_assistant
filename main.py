@@ -110,10 +110,19 @@ async def clear_history(user_id: str, background_tasks: BackgroundTasks):
 
 
 async def cleanup_all_users():
+    print("Clearing all users' chat history...")
+    chat_histories.clear()
+    last_activity.clear()
+    await asyncio.sleep(300)  # Sleep for 5 minutes (300 seconds)
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(periodic_cleanup())
+
+async def periodic_cleanup():
     while True:
-        print("Clearing all users' chat history...")
-        chat_histories.clear()
-        last_activity.clear()
+        await cleanup_all_users()
         await asyncio.sleep(300)  # Sleep for 5 minutes (300 seconds)
 
 
