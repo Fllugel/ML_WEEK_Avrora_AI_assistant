@@ -37,13 +37,15 @@ llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.7, openai_api_key=os.getenv(
 
 # Function to write the query
 def write_query(state: State):
+    prompt = "Якщо просять найти конкретний продукт пробуй задати запитя також по декільком синонімам або перефразований словам. Якщо просять порекомендувати продукт виберай випадковий."
+
     """Generate SQL query to fetch information."""
     prompt = query_prompt_template.invoke(
         {
             "dialect": db.dialect,
             "top_k": 10,
             "table_info": db.get_table_info(),
-            "input": state["question"],
+            "input": state["question"] + " " + prompt,
             "history": state["history"]
         }
     )
@@ -77,12 +79,14 @@ def generate_answer(state: State):
 # Define the tool using the @tool decorator
 @tool("find_data_in_db")
 def find_data_in_db(question: str, history: list) -> str:
-    """Create a tool that searches for data in a store database. The database contains information about products, including:
-        -Category: Name and unique identification number of the category.
-        -Subcategory: Name and unique identification number of the subcategory.
-        -Product Name: Specific name of the product.
-        -Stock Quantity: The number of units available in the store.
-        -Stock Value: The total price of all units of the product in stock."""
+    """Інструмент для пошуку в базі даних магазину.
+    База даних містить наступні дані про товари:
+        -ProductID: Артикул товару.
+        -Category: Категорія товару.
+        -Subcategory: Під катигорія товару.
+        -ProductTitle: Назва товару.
+        -StockProduct: Кількість товару в магазині.
+        -ProductPrice: Ціна за одиницю товару."""
     state = {"question": question, "history": history}
     state.update(write_query(state))
     state.update(execute_query(state))
