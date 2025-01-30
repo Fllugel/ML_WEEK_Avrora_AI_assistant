@@ -63,9 +63,8 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-@app.post("/chat")
-async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
-    user_id = request.user_id
+@app.post("/chat/{user_id}")
+async def chat(user_id: str, input: str, background_tasks: BackgroundTasks):
     print(f"Received chat request from user_id: {user_id}")
     if user_id not in chat_histories:
         chat_histories[user_id] = []
@@ -74,7 +73,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     # Build the input payload
     input_payload = {
         "history": chat_histories[user_id],
-        "input": request.input
+        "input": input
     }
     print(f"Input payload: {input_payload}")
 
@@ -89,7 +88,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     print(f"Assistant's response: {response_message}")
 
     # Update chat history
-    chat_histories[user_id].append({"role": "user", "content": request.input})
+    chat_histories[user_id].append({"role": "user", "content": input})
     chat_histories[user_id].append({"role": "assistant", "content": response_message})
 
     # Enforce memory limit
