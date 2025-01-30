@@ -1,7 +1,6 @@
 import sys
 import uvicorn
-import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -63,9 +62,9 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-@app.post("/chat/{user_id}")
-async def chat(user_id: str, input: str, background_tasks: BackgroundTasks):
-    print(f"Received chat request from user_id: {user_id}")
+@app.post("/chat")
+async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
+    user_id = request.user_id
     if user_id not in chat_histories:
         chat_histories[user_id] = []
     last_activity[user_id] = datetime.now(timezone.utc)
@@ -73,57 +72,34 @@ async def chat(user_id: str, input: str, background_tasks: BackgroundTasks):
     # Build the input payload
     input_payload = {
         "history": chat_histories[user_id],
-        "input": input
+        "input": request.input
     }
-    print(f"Input payload: {input_payload}")
 
     # Invoke the graph
     response = runnable.invoke({
         "messages": prompt.format_messages(**input_payload)
     })
-    print(f"Graph response: {response}")
 
     # Extract the assistant's response
     response_message = response["messages"][-1].content
-    print(f"Assistant's response: {response_message}")
 
     # Update chat history
-    chat_histories[user_id].append({"role": "user", "content": input})
+    chat_histories[user_id].append({"role": "user", "content": request.input})
     chat_histories[user_id].append({"role": "assistant", "content": response_message})
 
     # Enforce memory limit
     if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
         chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
 
-    # Add background task to clean up inactive users
-    background_tasks.add_task(cleanup_all_users)
-
     return {"response": response_message}
 
 
-@app.post("/clear_history/{user_id}")
-async def clear_history(user_id: str, background_tasks: BackgroundTasks):
-    print(f"Received clear history request from user_id: {user_id}")
+@app.post("/clear_history")
+async def clear_history(request: ChatRequest, background_tasks: BackgroundTasks):
+    user_id = request.user_id
     if user_id in chat_histories:
         chat_histories[user_id] = []
     return {"message": "Chat history cleared."}
-
-
-async def cleanup_all_users():
-    print("Clearing all users' chat history...")
-    chat_histories.clear()
-    last_activity.clear()
-    await asyncio.sleep(300)  # Sleep for 5 minutes (300 seconds)
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(periodic_cleanup())
-
-async def periodic_cleanup():
-    while True:
-        await cleanup_all_users()
-        await asyncio.sleep(300)  # Sleep for 5 minutes (300 seconds)
 
 
 def chat_loop():
@@ -141,10 +117,10 @@ def chat_loop():
             break
 
         input_payload = {"history": chat_histories[user_id], "input": user_input}
-        print(f"User input: {user_input}")
         response = runnable.invoke({"messages": prompt.format_messages(**input_payload)})
         response_message = response["messages"][-1].content
-        print(f"Bot response: {response_message}")
+
+        print(f"Bot: {response_message}")
 
         chat_histories[user_id].append({"role": "user", "content": user_input})
         chat_histories[user_id].append({"role": "assistant", "content": response_message})
