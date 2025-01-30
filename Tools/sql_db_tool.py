@@ -85,7 +85,7 @@ def find_data_in_db(question: str, history: list) -> str:
         -Category: Категорія товару.
         -Subcategory: Під катигорія товару.
         -ProductTitle: Назва товару.
-        -StockProduct: Кількість товару в магазині.
+        -StockProduct: Кількість наявного товару в магазині.
         -ProductPrice: Ціна за одиницю товару."""
     state = {"question": question, "history": history}
     state.update(write_query(state))
