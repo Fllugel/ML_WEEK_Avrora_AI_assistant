@@ -1,6 +1,6 @@
 import sys
 import uvicorn
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ from langsmith import utils
 from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
 
-sys.setrecursionlimit(1500) # BAD BAD FIX
+sys.setrecursionlimit(1500)  # Increase the recursion limit
 
 load_dotenv(dotenv_path=".env")
 
@@ -67,7 +67,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     user_id = request.user_id
     if user_id not in chat_histories:
         chat_histories[user_id] = []
-    last_activity[user_id] = datetime.utcnow()
+    last_activity[user_id] = datetime.now(timezone.utc)
 
     # Build the input payload
     input_payload = {
@@ -106,11 +106,14 @@ async def clear_history(request: ChatRequest, background_tasks: BackgroundTasks)
 
 
 async def cleanup_inactive_users():
-    now = datetime.utcnow()
+    print("Cleaning up inactive users...")
+    now = datetime.now(timezone.utc)
     inactive_users = [user_id for user_id, last_time in last_activity.items() if now - last_time > timedelta(hours=1)]
     for user_id in inactive_users:
-        del chat_histories[user_id]
-        del last_activity[user_id]
+        if user_id in chat_histories:
+            del chat_histories[user_id]
+        if user_id in last_activity:
+            del last_activity[user_id]
 
 
 def chat_loop():
@@ -119,7 +122,7 @@ def chat_loop():
     user_id = input("Enter your user ID: ")
     if user_id not in chat_histories:
         chat_histories[user_id] = []
-    last_activity[user_id] = datetime.utcnow()
+    last_activity[user_id] = datetime.now(timezone.utc)
 
     while True:
         user_input = input("You: ")
@@ -135,7 +138,7 @@ def chat_loop():
 
         chat_histories[user_id].append({"role": "user", "content": user_input})
         chat_histories[user_id].append({"role": "assistant", "content": response_message})
-        last_activity[user_id] = datetime.utcnow()
+        last_activity[user_id] = datetime.now(timezone.utc)
 
         if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
             chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
