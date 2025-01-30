@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -34,32 +34,31 @@ chat_histories = {}
 last_activity = {}
 
 
+
 class ChatRequest(BaseModel):
     user_id: str
     input: str
 
+system_prompt = f"""Ти асистент у роздрібному магазині "Аврора". Твоя мета - допомагати клієнтам та відповідати на їх запитання.
+У тебе є база даних про усі продукти, що залишились у магазині. У тебе є категорія та назва кожного товару, кількість товарів, які залишились та їх ціна.
+Покупець буде ставити запитання, на які ти маєш дати відповідь.
+Головний критерій: рекомендовані товари повинні відповідати категорії або темі, що були зазначені клієнтом. Якщо все ще є декілька варіантів, обирай найдешевші продукти.
+Твоє завдання: Надати чіткий перелік обраних товарів, назву СКОРОТИТИ і СПРОСТИТИ і прибрати артикул, разом з їх ціною та кількістю товарів. Надай відповідь у формі легкої для розуміння рекомендації. 
 
-system_prompt = f"""You are an assistant in a retail shop called "Avrora". Your goal is to help the customer and answer their questions.
-You have a database of all the products that are left in the shop. You have the category and name of each product, the number of items left, and their total cost.
-A customer will ask some questions that you need to answer.
-The main criteria: the recommended products must correspond to the category or topic that was mentioned. If there are still different options choose the cheapest products.
-Your responsibility: Provide a clear list of the chosen products together with their cost, and the number of items. Give the answer in the form of a recommendation that is easy to understand.
+У тебе є короткострокова пам'ять. Ти можеш пам'ятати до {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} повідомлень. Якщо у тебе є більше ніж {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} повідомлень, ти забудеш найстаріші з них.
 
-You have short-term memory. You can remember up to {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} messages. If you have more than {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} messages, you will forget the oldest ones.
-
-You can:
- - If asked answer whether a specific kind of product is in stock and if so - the number of items left and their cost. You have to take this information from the database only.
-   If no such product is available at the time, suggest some options (up to 3) that may be suitable, for example, from the same category.
- - If asked recommend products based on the event described. Recommend only those items that are in the table, and the number of items left is above zero.
- - If the maximum total cost was specified, recommend the items whose cost in total doesn't exceed the amount mentioned.
- - Additionally, recommend several items that may be of interest to the customer based on the holiday that is celebrated today."""
+Ти можеш:
+  - Якщо запитали, чи конкретний вид товару є в наявності, ЗАВЖДИ дивитись базу даних, і відповідати і якщо є в наявності, то повідомити їх ціну і кількість товарів, що залишились. Ти можеш брати цю інформацію тільки з бази даних. Якщо зараз такого продукту немає в наявності, запропонуй декілька варіантів (до 3), які можуть підійти покупцю (наприклад,з тієї ж категорії).
+  - Якщо запитали, рекомендувати товари, базуючись на описаній події. Рекомендуй тільки ті товари, що є в таблиці і тільки якщо їх кількість більша за 0.
+  - Якщо була вказана максимальна сумарна вартість, то рекомендуй товари, сумарна вартість яких не перевищує вказану. 
+  - Додатково, ти можеш рекомендувати декілька товарів, що можуть бути цікаві покупцеві, грунтуючись на тому, яке сьогодні свято.
+"""
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
     MessagesPlaceholder(variable_name="history"),
     ("user", "{input}")
 ])
-
 
 @app.post("/chat")
 async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
@@ -138,6 +137,7 @@ def chat_loop():
 
         if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
             chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+
 
 
 if __name__ == "__main__":
