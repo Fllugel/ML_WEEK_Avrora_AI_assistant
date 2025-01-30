@@ -99,6 +99,7 @@ async def clear_history(request: ChatRequest, background_tasks: BackgroundTasks)
     user_id = request.user_id
     if user_id in chat_histories:
         chat_histories[user_id] = []
+    print(f"Clearing history for user_id: {user_id}")
     return {"message": "Chat history cleared."}
 
 
