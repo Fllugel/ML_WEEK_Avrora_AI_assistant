@@ -102,9 +102,8 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     return {"response": response_message}
 
 
-@app.post("/clear_history")
-async def clear_history(request: ChatRequest, background_tasks: BackgroundTasks):
-    user_id = request.user_id
+@app.post("/clear_history/{user_id}")
+async def clear_history(user_id: str, background_tasks: BackgroundTasks):
     print(f"Received clear history request from user_id: {user_id}")
     if user_id in chat_histories:
         chat_histories[user_id] = []
