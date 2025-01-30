@@ -109,6 +109,6 @@ def chat_loop():
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="1.2.3.20", port=8123)
     else:
         chat_loop()
