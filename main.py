@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -9,7 +9,6 @@ from graph import graph_builder
 import sys
 import uvicorn
 from datetime import datetime, timedelta
-import asyncio
 
 load_dotenv(dotenv_path=".env")
 
@@ -34,10 +33,10 @@ chat_histories = {}
 last_activity = {}
 
 
-
 class ChatRequest(BaseModel):
     user_id: str
     input: str
+
 
 system_prompt = f"""Ти асистент у роздрібному магазині "Аврора". Твоя мета - допомагати клієнтам та відповідати на їх запитання.
 У тебе є база даних про усі продукти, що залишились у магазині. У тебе є категорія та назва кожного товару, кількість товарів, які залишились та їх ціна.
@@ -59,6 +58,7 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="history"),
     ("user", "{input}")
 ])
+
 
 @app.post("/chat")
 async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
@@ -137,7 +137,6 @@ def chat_loop():
 
         if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
             chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
-
 
 
 if __name__ == "__main__":
