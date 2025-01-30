@@ -23,6 +23,7 @@ class State(TypedDict):
     query: str
     result: str
     answer: str
+    history: list
 
 
 # Define the QueryOutput structure
@@ -43,6 +44,7 @@ def write_query(state: State):
             "top_k": 10,
             "table_info": db.get_table_info(),
             "input": state["question"],
+            "history": state["history"]
         }
     )
     structured_llm = llm.with_structured_output(QueryOutput)
@@ -65,7 +67,8 @@ def generate_answer(state: State):
         "and SQL result, answer the user question.\n\n"
         f'Question: {state["question"]}\n'
         f'SQL Query: {state["query"]}\n'
-        f'SQL Result: {state["result"]}'
+        f'SQL Result: {state["result"]}\n'
+        f'History: {state["history"]}'
     )
     response = llm.invoke(prompt)
     return {"answer": response.content}
@@ -73,14 +76,14 @@ def generate_answer(state: State):
 
 # Define the tool using the @tool decorator
 @tool("find_data_in_db")
-def find_data_in_db(question: str) -> str:
+def find_data_in_db(question: str, history: list) -> str:
     """Create a tool that searches for data in a store database. The database contains information about products, including:
         -Category: Name and unique identification number of the category.
         -Subcategory: Name and unique identification number of the subcategory.
         -Product Name: Specific name of the product.
         -Stock Quantity: The number of units available in the store.
         -Stock Value: The total price of all units of the product in stock."""
-    state = {"question": question}
+    state = {"question": question, "history": history}
     state.update(write_query(state))
     state.update(execute_query(state))
     state.update(generate_answer(state))
