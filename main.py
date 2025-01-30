@@ -1,8 +1,12 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langsmith import utils
 from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
+import sys
+import uvicorn
 
 load_dotenv(dotenv_path=".env")
 
@@ -10,6 +14,15 @@ utils.tracing_is_enabled()
 
 # Compile the graph
 runnable = graph_builder.compile()
+
+app = FastAPI()
+
+# Chat history storage
+chat_history = []
+
+
+class ChatRequest(BaseModel):
+    input: str
 
 system_prompt = f"""Ти асистент у роздрібному магазині "Аврора". Твоя мета - допомагати клієнтам та відповідати на їх запитання.
 У тебе є база даних про усі продукти, що залишились у магазині. У тебе є категорія та назва кожного товару, кількість товарів, які залишились та їх ціна.
@@ -26,7 +39,6 @@ system_prompt = f"""Ти асистент у роздрібному магази
   - Додатково, ти можеш рекомендувати декілька товарів, що можуть бути цікаві покупцеві, грунтуючись на тому, яке сьогодні свято.
 """
 
-# Create the ChatPromptTemplate
 prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt),
     MessagesPlaceholder(variable_name="history"),
@@ -34,46 +46,68 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    global chat_history
+
+    # Build the input payload
+    input_payload = {
+        "history": chat_history,
+        "input": request.input
+    }
+
+    # Invoke the graph
+    response = runnable.invoke({
+        "messages": prompt.format_messages(**input_payload)
+    })
+
+    # Extract the assistant's response
+    response_message = response["messages"][-1].content
+
+    # Update chat history
+    chat_history.append({"role": "user", "content": request.input})
+    chat_history.append({"role": "assistant", "content": response_message})
+
+    # Enforce memory limit
+    if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
+        chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+
+    return {"response": response_message}
+
+
+@app.post("/clear_history")
+async def clear_history():
+    global chat_history
+    chat_history = []
+    return {"message": "Chat history cleared."}
+
+
 def chat_loop():
     print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
 
-    # Initialize chat history
     chat_history = []
 
     while True:
-        # Take user input
         user_input = input("You: ")
-
-        # Exit condition
         if user_input.lower() == "exit":
             print("Goodbye!")
             break
 
-        # Build the input payload for the graph
-        input_payload = {
-            "history": chat_history,
-            "input": user_input
-        }
-
-        # Invoke the graph
-        response = runnable.invoke({
-            "messages": prompt.format_messages(**input_payload)
-        })
-
-        # Extract the assistant's response
+        input_payload = {"history": chat_history, "input": user_input}
+        response = runnable.invoke({"messages": prompt.format_messages(**input_payload)})
         response_message = response["messages"][-1].content
 
-        # Display the bot's response
         print(f"Bot: {response_message}")
 
-        # Update chat history
         chat_history.append({"role": "user", "content": user_input})
         chat_history.append({"role": "assistant", "content": response_message})
 
-        # Enforce the maximum number of messages
         if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
             chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
 
 
-# Start the chat loop
-chat_loop()
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "server":
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    else:
+        chat_loop()
