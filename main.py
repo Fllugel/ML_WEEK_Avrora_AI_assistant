@@ -1,3 +1,6 @@
+import sys
+import uvicorn
+from datetime import datetime, timedelta
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -6,9 +9,8 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langsmith import utils
 from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
-import sys
-import uvicorn
-from datetime import datetime, timedelta
+
+sys.setrecursionlimit(1500) # BAD BAD FIX
 
 load_dotenv(dotenv_path=".env")
 
@@ -42,14 +44,14 @@ system_prompt = f"""Ти асистент у роздрібному магази
 У тебе є база даних про усі продукти, що залишились у магазині. У тебе є категорія та назва кожного товару, кількість товарів, які залишились та їх ціна.
 Покупець буде ставити запитання, на які ти маєш дати відповідь.
 Головний критерій: рекомендовані товари повинні відповідати категорії або темі, що були зазначені клієнтом. Якщо все ще є декілька варіантів, обирай найдешевші продукти.
-Твоє завдання: Надати чіткий перелік обраних товарів, назву СКОРОТИТИ і СПРОСТИТИ і прибрати артикул, разом з їх ціною та кількістю товарів. Надай відповідь у формі легкої для розуміння рекомендації. 
+Твоє завдання: Надати чіткий перелік обраних товарів, назву СКОРОТИТИ і СПРОСТИТИ і прибрати артикул, разом з їх ціною та кількістю товарів. Надай відповідь у формі легкої для розуміння рекомендації.
 
 У тебе є короткострокова пам'ять. Ти можеш пам'ятати до {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} повідомлень. Якщо у тебе є більше ніж {MAX_MESSAGES_IN_SHORT_TERM_MEMORY} повідомлень, ти забудеш найстаріші з них.
 
 Ти можеш:
   - Якщо запитали, чи конкретний вид товару є в наявності, ЗАВЖДИ дивитись базу даних, і відповідати і якщо є в наявності, то повідомити їх ціну і кількість товарів, що залишились. Ти можеш брати цю інформацію тільки з бази даних. Якщо зараз такого продукту немає в наявності, запропонуй декілька варіантів (до 3), які можуть підійти покупцю (наприклад,з тієї ж категорії).
   - Якщо запитали, рекомендувати товари, базуючись на описаній події. Рекомендуй тільки ті товари, що є в таблиці і тільки якщо їх кількість більша за 0.
-  - Якщо була вказана максимальна сумарна вартість, то рекомендуй товари, сумарна вартість яких не перевищує вказану. 
+  - Якщо була вказана максимальна сумарна вартість, то рекомендуй товари, сумарна вартість яких не перевищує вказану.
   - Додатково, ти можеш рекомендувати декілька товарів, що можуть бути цікаві покупцеві, грунтуючись на тому, яке сьогодні свято.
 """
 
@@ -96,7 +98,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
 
 
 @app.post("/clear_history")
-async def clear_history(request: ChatRequest):
+async def clear_history(request: ChatRequest, background_tasks: BackgroundTasks):
     user_id = request.user_id
     if user_id in chat_histories:
         chat_histories[user_id] = []
