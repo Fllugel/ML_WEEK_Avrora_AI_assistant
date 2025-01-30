@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -8,6 +8,8 @@ from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 from graph import graph_builder
 import sys
 import uvicorn
+from datetime import datetime, timedelta
+import asyncio
 
 load_dotenv(dotenv_path=".env")
 
@@ -28,10 +30,14 @@ app.add_middleware(
 )
 
 # Chat history storage
-chat_history = []
+chat_histories = {}
+last_activity = {}
+
 
 class ChatRequest(BaseModel):
+    user_id: str
     input: str
+
 
 system_prompt = f"""You are an assistant in a retail shop called "Avrora". Your goal is to help the customer and answer their questions.
 You have a database of all the products that are left in the shop. You have the category and name of each product, the number of items left, and their total cost.
@@ -54,13 +60,17 @@ prompt = ChatPromptTemplate.from_messages([
     ("user", "{input}")
 ])
 
+
 @app.post("/chat")
-async def chat(request: ChatRequest):
-    global chat_history
+async def chat(request: ChatRequest, background_tasks: BackgroundTasks):
+    user_id = request.user_id
+    if user_id not in chat_histories:
+        chat_histories[user_id] = []
+    last_activity[user_id] = datetime.utcnow()
 
     # Build the input payload
     input_payload = {
-        "history": chat_history,
+        "history": chat_histories[user_id],
         "input": request.input
     }
 
@@ -73,25 +83,42 @@ async def chat(request: ChatRequest):
     response_message = response["messages"][-1].content
 
     # Update chat history
-    chat_history.append({"role": "user", "content": request.input})
-    chat_history.append({"role": "assistant", "content": response_message})
+    chat_histories[user_id].append({"role": "user", "content": request.input})
+    chat_histories[user_id].append({"role": "assistant", "content": response_message})
 
     # Enforce memory limit
-    if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
-        chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+    if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
+        chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+
+    # Add background task to clean up inactive users
+    background_tasks.add_task(cleanup_inactive_users)
 
     return {"response": response_message}
 
+
 @app.post("/clear_history")
-async def clear_history():
-    global chat_history
-    chat_history = []
+async def clear_history(request: ChatRequest):
+    user_id = request.user_id
+    if user_id in chat_histories:
+        chat_histories[user_id] = []
     return {"message": "Chat history cleared."}
+
+
+async def cleanup_inactive_users():
+    now = datetime.utcnow()
+    inactive_users = [user_id for user_id, last_time in last_activity.items() if now - last_time > timedelta(hours=1)]
+    for user_id in inactive_users:
+        del chat_histories[user_id]
+        del last_activity[user_id]
+
 
 def chat_loop():
     print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
 
-    chat_history = []
+    user_id = input("Enter your user ID: ")
+    if user_id not in chat_histories:
+        chat_histories[user_id] = []
+    last_activity[user_id] = datetime.utcnow()
 
     while True:
         user_input = input("You: ")
@@ -99,17 +126,19 @@ def chat_loop():
             print("Goodbye!")
             break
 
-        input_payload = {"history": chat_history, "input": user_input}
+        input_payload = {"history": chat_histories[user_id], "input": user_input}
         response = runnable.invoke({"messages": prompt.format_messages(**input_payload)})
         response_message = response["messages"][-1].content
 
         print(f"Bot: {response_message}")
 
-        chat_history.append({"role": "user", "content": user_input})
-        chat_history.append({"role": "assistant", "content": response_message})
+        chat_histories[user_id].append({"role": "user", "content": user_input})
+        chat_histories[user_id].append({"role": "assistant", "content": response_message})
+        last_activity[user_id] = datetime.utcnow()
 
-        if len(chat_history) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
-            chat_history = chat_history[-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+        if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
+            chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
