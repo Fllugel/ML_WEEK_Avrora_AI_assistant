@@ -26,7 +26,7 @@ app = FastAPI()
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://localhost:3000", "marinachrn.github.io/avrora/"],
+    allow_origins=["http://localhost:3000", "https://localhost:3000", "https://marinachrn.github.io/avrora/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
