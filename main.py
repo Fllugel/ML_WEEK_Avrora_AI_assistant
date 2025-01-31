@@ -2,7 +2,6 @@ import sys
 import uvicorn
 import random
 import string
-import logging
 from datetime import datetime, timezone
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,11 +17,6 @@ sys.setrecursionlimit(1500)  # Increase the recursion limit
 load_dotenv(dotenv_path=".env")
 
 utils.tracing_is_enabled()
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("uvicorn")
-logger.setLevel(logging.DEBUG)
 
 # Compile the graph
 runnable = graph_builder.compile()
@@ -63,7 +57,7 @@ system_prompt = f"""Ти консультант у роздрібному маг
 - Якщо запитали, про якийсь товар, ЗАВЖДИ дивитись базу даних, і відповідати і якщо є в наявності, то повідомити їх ціну і кількість товарів, що залишились. Ти можеш брати цю інформацію тільки з бази даних. Якщо зараз такого продукту немає в наявності, запропонуй декілька варіантів.
 - Якщо запитали, рекомендувати товари, базуючись на описаній події. Рекомендуй тільки ті товари, що є в базі даних і тільки якщо їх кількість більша за 0.
 - Якщо питають назву товару не пиши такі деталі як розмір, вага.
-- Якщо питають рекомендацію що купити рекомендуй конкретні ТОВАРИ а не категорію товарів.
+- Якщо питають рекомендацію/що купити то рекомендуй конкретні випадкові ТОВАРИ з магазину.
 - Якщо питають про певну катигорію спочатку взнай які в тебе є катигорії товарів, а потім відповідай.Якщо чітко таку катигорію в базі даних не виходить знайти шукай товари які на твою думку можуть належати цій категорії.
 
   НЕ ВИКОРИСТОВУЙ MARKDOWN. НЕ ПИШИ СПЕЦІАЛЬНІ СИМВОЛИ. ВИКОРИСТОВУЙ ЛИШЕ ТЕКСТ, КРАПКИ,КОМИ,ЗНАК ОКЛИКУ,ЗНАК ПИТАННЯ, ПРОБІЛИ, ЦИФРИ ТА ЛІТЕРИ.
