@@ -2,6 +2,7 @@ import sys
 import uvicorn
 import random
 import string
+import logging
 from datetime import datetime, timezone
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,11 @@ load_dotenv(dotenv_path=".env")
 
 utils.tracing_is_enabled()
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
+
 # Compile the graph
 runnable = graph_builder.compile()
 
@@ -26,7 +32,7 @@ app = FastAPI()
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://localhost:3000"],  # Allow frontend origin
+    allow_origins=["http://localhost:3000", "https://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +48,9 @@ class ChatRequest(BaseModel):
     input: str
 
 
+current_datetime = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
 system_prompt = f"""Ти консультант у роздрібному магазині "Аврора". Твоя мета - допомагати клієнтам та відповідати на їх запитання.
+Сьогоднішня дата та час: {current_datetime}. Можеш дату і час використовувати щоб знати яке сьогодні свято.
 У тебе є доступ до бази даних про усі товари у магазині. Якщо тебе питають щось про товар в магазині ЗАВЖДИ перевіряй базу даних. ВСІ ЦІНИ В ГРН. Рекомендовані товари повинні відповідати категорії або темі, що були зазначені клієнтом.
 Надавай відповіді у легкму для розуміння розмовному стилі.
 БУДЬ ВІЧЛИВИМ.
@@ -141,6 +149,6 @@ def chat_loop():
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
     else:
         chat_loop()
