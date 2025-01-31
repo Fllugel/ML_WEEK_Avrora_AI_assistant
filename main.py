@@ -23,10 +23,15 @@ runnable = graph_builder.compile()
 
 app = FastAPI()
 
-# Updated CORS configuration
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For testing - change to specific origins in production
+    allow_origins=[
+        "http://localhost:3000",
+        "https://localhost:3000",
+        "https://marinachrn.github.io", 
+        "http://20.215.194.147:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -69,11 +74,6 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="history"),
     ("user", "{input}")
 ])
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
 
 
 @app.post("/chat")
@@ -147,23 +147,7 @@ def chat_loop():
 
 
 if __name__ == "__main__":
-    # Create SSL context
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    try:
-        ssl_context.load_cert_chain('cert.pem', keyfile='key.pem')
-        uvicorn.run(
-            app, 
-            host="0.0.0.0", 
-            port=8000, 
-            ssl=ssl_context,
-            log_level="debug"
-        )
-    except Exception as e:
-        print(f"Failed to load SSL certificates: {e}")
-        # Fallback to HTTP
-        uvicorn.run(
-            app, 
-            host="0.0.0.0", 
-            port=8000,
-            log_level="debug"
-        )
+    if len(sys.argv) > 1 and sys.argv[1] == "server":
+        uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
+    else:
+        chat_loop()
