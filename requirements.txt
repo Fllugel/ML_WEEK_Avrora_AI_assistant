@@ -10,3 +10,4 @@ datetime
 asyncio
 uvicorn
 ipython
+PyYAML
