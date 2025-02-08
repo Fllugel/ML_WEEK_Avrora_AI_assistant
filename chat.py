@@ -50,30 +50,26 @@ prompt = ChatPromptTemplate.from_messages([
     ("user", "{input}")
 ])
 
-def chat_loop():
-    print("Welcome to the chatbot! Type 'exit' to quit the conversation.")
 
-    user_id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    chat_histories[user_id] = []
-    last_activity[user_id] = datetime.now(timezone.utc)
-
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() == "exit":
-            print("Goodbye!")
-            del chat_histories[user_id]
-            del last_activity[user_id]
-            break
-
-        input_payload = {"history": chat_histories[user_id], "input": user_input}
-        response = runnable.invoke({"messages": prompt.format_messages(**input_payload)})
-        response_message = response["messages"][-1].content
-
-        print(f"Bot: {response_message}")
-
-        chat_histories[user_id].append({"role": "user", "content": user_input})
-        chat_histories[user_id].append({"role": "assistant", "content": response_message})
+def process_message(user_id: str, user_input: str) -> str:
+    if user_id not in chat_histories:
+        chat_histories[user_id] = []
         last_activity[user_id] = datetime.now(timezone.utc)
 
-        if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
-            chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+    chat_histories[user_id].append({"role": "user", "content": user_input})
+
+    input_format = {
+        "history": chat_histories[user_id],
+        "input": user_input
+    }
+
+    response = runnable.invoke({"messages": prompt.format_messages(**input_format)})
+    response_message = response["messages"][-1].content
+
+    chat_histories[user_id].append({"role": "assistant", "content": response_message})
+    last_activity[user_id] = datetime.now(timezone.utc)
+
+    if len(chat_histories[user_id]) > MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:
+        chat_histories[user_id] = chat_histories[user_id][-MAX_MESSAGES_IN_SHORT_TERM_MEMORY * 2:]
+
+    return response_message
