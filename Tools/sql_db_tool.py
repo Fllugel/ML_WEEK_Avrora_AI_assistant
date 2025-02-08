@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langchain_community.utilities import SQLDatabase
@@ -13,9 +14,19 @@ load_dotenv()
 # Initialize the database
 db = SQLDatabase.from_uri("sqlite:///Data/database.db")
 
-# Pull the query prompt template
-query_prompt_template = hub.pull("langchain-ai/sql-query-system-prompt")
+tool_prompt = PromptTemplate.from_template("""
+Given an input question, create a syntactically correct {dialect} query to run to help find the answer. Unless the user specifies in his question a specific number of examples they wish to obtain, always limit your query to at most {top_k} results. You can order the results by a relevant column to return the most interesting examples in the database.
+Never query for all the columns from a specific table, only ask for a the few relevant columns given the question.
+Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
+When searching for a specific product, use multiple synonyms or rephrased versions of the product name in query. Perform search queries using variations such as the first letter capitalized, the first letter in lowercase, and the entire name in uppercase letters. If a client asks for a product recommendation without a detailed description, choose a random product from the database using RANDOM. 
 
+ALWAYS make queries in noun infinitive form when searching for a specific product. 
+
+Only use the following tables:
+{table_info}
+
+Question: {input}
+""")
 
 # Define the State object structure
 class State(TypedDict):
@@ -37,23 +48,17 @@ llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.7, openai_api_key=os.getenv(
 
 # Function to write the query
 def write_query(state: State):
-    prompt = """
-Якщо клієнт просить знайти конкретний продукт, використовуй кілька синонімів або перефразованих варіантів назви товару для пошуку. Виконуй пошукові запити в таких варіантах: з великої першої букви, з малої першої букви, а також у повністю великих літерах (капсом).
 
-Якщо клієнт просить порекомендувати продукт без конкретного опису, обирай випадковий товар з наявних у базі даних.Для рекомендацій або випадкових товарів використовуй RANDOM, щоб обрати товар випадковим чином.
-
-Якщо запит містить кілька товарів, завжди виконуй один спільний SQL-запит для всіх товарів, щоб пришвидшити пошук і надати відповідь про всі товари одночасно.
-"""
-
-    prompt = query_prompt_template.invoke(
+    prompt = tool_prompt.invoke(
         {
             "dialect": db.dialect,
             "top_k": 10,
             "table_info": db.get_table_info(),
-            "input": state["question"] + " " + prompt,
+            "input": state["question"],
             "history": state["history"]
         }
     )
+    print(prompt)
     structured_llm = llm.with_structured_output(QueryOutput)
     result = structured_llm.invoke(prompt)
     return {"query": result["query"]}
@@ -84,14 +89,7 @@ def generate_answer(state: State):
 # Define the tool using the @tool decorator
 @tool("find_data_in_db")
 def find_data_in_db(question: str, history: list) -> str:
-    """Інструмент для пошуку в базі даних магазину.
-    База даних містить наступні дані про товари:
-        -ProductID: Артикул товару.
-        -Category: Категорія товару.
-        -Subcategory: Під катигорія товару.
-        -ProductTitle: Назва товару.
-        -StockProduct: Кількість наявного товару в магазині.
-        -ProductPrice: Ціна за одиницю товару."""
+    """Tool for searching the store's database. The database contains the following data about products: product article, product category, product sub-category, product name, available quantity in the store, and price per unit."""
     state = {"question": question, "history": history}
     state.update(write_query(state))
     state.update(execute_query(state))
