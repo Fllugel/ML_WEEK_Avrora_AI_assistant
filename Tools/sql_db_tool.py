@@ -58,7 +58,6 @@ def write_query(state: State):
             "history": state["history"]
         }
     )
-    print(prompt)
     structured_llm = llm.with_structured_output(QueryOutput)
     result = structured_llm.invoke(prompt)
     return {"query": result["query"]}
