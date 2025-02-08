@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from chat import chat_histories, last_activity, runnable, prompt
+from config import MAX_MESSAGES_IN_SHORT_TERM_MEMORY
 
 app = FastAPI()
 

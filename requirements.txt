@@ -11,3 +11,4 @@ asyncio
 uvicorn
 ipython
 gradio
+PyYAML
