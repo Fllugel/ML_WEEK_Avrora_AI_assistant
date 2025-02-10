@@ -10,9 +10,10 @@ def handle_chat(user_input, chat_history, user_id):
 
     response = process_message(user_id, user_input)
 
-    chat_history.append((user_input, response))
+    chat_history.append({"role": "user", "content": user_input})
+    chat_history.append({"role": "assistant", "content": response})
 
-    return chat_history, gr.Textbox(value=""), user_id
+    return chat_history, "", user_id
 
 
 def launch_gradio_interface():
@@ -26,6 +27,8 @@ def launch_gradio_interface():
             chatbot = gr.Chatbot(
                 elem_id="chatbot",
                 bubble_full_width=False,
+                height=500,
+                type="messages"
             )
 
             with gr.Row():

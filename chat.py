@@ -28,6 +28,7 @@ Product name
 Price in UAH (грн)
 Quantity left (if the customer asks)
 If the product is out of stock, suggest alternatives from the same category.
+If the said product was not found in the database, search fot its synonyms before giving the final answer.
 
 Recommendations
 If a customer asks for a recommendation:

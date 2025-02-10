@@ -18,7 +18,7 @@ tool_prompt = PromptTemplate.from_template("""
 Given an input question, create a syntactically correct {dialect} query to run to help find the answer. Unless the user specifies in his question a specific number of examples they wish to obtain, always limit your query to at most {top_k} results. You can order the results by a relevant column to return the most interesting examples in the database.
 Never query for all the columns from a specific table, only ask for a the few relevant columns given the question.
 Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.
-When searching for a specific product, use multiple synonyms or rephrased versions of the product name in query. Perform search queries using variations such as the first letter capitalized, the first letter in lowercase, and the entire name in uppercase letters. If a client asks for a product recommendation without a detailed description, choose a random product from the database using RANDOM. 
+When searching for a specific product, and you do not find the product in the database, use multiple synonyms or rephrased versions of the product name in query. Perform search queries using variations such as the first letter capitalized, the first letter in lowercase, and the entire name in uppercase letters. If a client asks for a product recommendation without a detailed description, choose a random product from the database using RANDOM. 
 
 ALWAYS make queries in noun infinitive form when searching for a specific product. 
 
