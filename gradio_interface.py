@@ -27,7 +27,7 @@ def launch_gradio_interface():
             chatbot = gr.Chatbot(
                 elem_id="chatbot",
                 bubble_full_width=False,
-                height=500,
+                height=800,
                 type="messages"
             )
 
